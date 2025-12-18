@@ -1,22 +1,23 @@
 import json
 import struct
 
-def send_json(socket, object):
-    data = json.dumps(object).encode("utf-8")
-    length = struct.pack("!I", len(data)) # !I unpacks it as 32 bit integers
-    socket.sendall(length + data)
+def send_json(sock, data):
+    json_str = json.dumps(data)
+    json_bytes = json_str.encode('utf-8')
+    length = len(json_bytes)
+    sock.sendall(struct.pack('>I', length))
+    sock.sendall(json_bytes)
 
-def limited_receive(socket, n):
-    buffer = b""
-    while len(buffer) < n:
-        chunk = socket.recv(n - len(buffer))
+def receive_json(sock):
+    length_bytes = sock.recv(4)
+    if not length_bytes:
+        raise ConnectionError("Connection closed")
+    length = struct.unpack('>I', length_bytes)[0]
+    json_bytes = b''
+    while len(json_bytes) < length:
+        chunk = sock.recv(min(4096, length - len(json_bytes)))
         if not chunk:
-            raise ConnectionError("The Socket connection closed")
-        buffer += chunk
-    return buffer
-
-def receive_json(socket):
-    datalen = limited_receive(socket, 4)
-    (Length,) = struct.unpack("!I", datalen) # Because it returns length as a tuple
-    data = limited_receive(socket, Length)
-    return json.loads(data.decode("utf-8"))
+            raise ConnectionError("Connection closed")
+        json_bytes += chunk
+    json_str = json_bytes.decode('utf-8')
+    return json.loads(json_str)
