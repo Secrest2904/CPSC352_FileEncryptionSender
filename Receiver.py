@@ -1,15 +1,16 @@
 import socket
 import sys
+import io
 from pathlib import Path
 from formatting import send_json, receive_json
 from crypto_utils import crypto
 import os
-import io
+
 
 if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-    os.environ['PYTHONIOENCODING'] = 'utf-8'
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 
 class FileReceiver:
     
@@ -34,13 +35,13 @@ class FileReceiver:
         if private_key_file.exists() and public_key_file.exists():
             self.private_key = crypto.load_private_key(str(private_key_file))
             self.public_key = crypto.load_public_key(str(public_key_file))
-            print(f"✓ Loaded keypair for {self.receiver_id}")
+            print(f"[OK] Loaded keypair for {self.receiver_id}")
         else:
-            print(f"→ Generating new keypair for {self.receiver_id}...")
+            print(f"[*] Generating new keypair for {self.receiver_id}...")
             self.private_key, self.public_key = crypto.generate_rsa_keypair()
             crypto.save_private_key(self.private_key, str(private_key_file))
             crypto.save_public_key(self.public_key, str(public_key_file))
-            print(f"✓ Keypair generated and saved\n")
+            print(f"[OK] Keypair generated and saved\n")
     
     def send_request(self, request):
         try:
@@ -51,7 +52,7 @@ class FileReceiver:
             sock.close()
             return response
         except Exception as e:
-            print(f"✗ Server connection error: {e}")
+            print(f"[FAIL] Server connection error: {e}")
             return {'status': 'error', 'message': str(e)}
     
     def register_with_server(self):
@@ -63,13 +64,13 @@ class FileReceiver:
         })
         
         if response.get('status') == 'success':
-            print(f"✓ Registered with server as {self.receiver_id}\n")
+            print(f"[OK] Registered with server as {self.receiver_id}\n")
         else:
-            print(f"✗ Registration failed: {response.get('message')}\n")
+            print(f"[FAIL] Registration failed: {response.get('message')}\n")
     
     def list_files(self):
         print(f"\n{'='*70}")
-        print(f"  📋 Encrypted Files for {self.receiver_id}")
+        print(f"  Encrypted Files for {self.receiver_id}")
         print(f"{'='*70}\n")
         
         response = self.send_request({
@@ -78,7 +79,7 @@ class FileReceiver:
         })
         
         if response.get('status') != 'success':
-            print(f"✗ Failed to list files: {response.get('message')}\n")
+            print(f"[FAIL] Failed to list files: {response.get('message')}\n")
             return []
         
         files = response.get('files', [])
@@ -97,14 +98,14 @@ class FileReceiver:
     
     def download_and_decrypt(self, file_id, sender_id):
         try:
-            print(f"\n→ Downloading encrypted file from server...")
+            print(f"\n[*] Downloading encrypted file from server...")
             response = self.send_request({
                 'action': 'download_file',
                 'file_id': file_id
             })
             
             if response.get('status') != 'success':
-                print(f"✗ Download failed: {response.get('message')}\n")
+                print(f"[FAIL] Download failed: {response.get('message')}\n")
                 return False
             
             encrypted_file_b64 = response.get('encrypted_file')
@@ -120,55 +121,55 @@ class FileReceiver:
             iv = crypto.b64_to_bytes(iv_b64)
             tag = crypto.b64_to_bytes(tag_b64)
             
-            print(f"   ✓ Downloaded {len(encrypted_file)} bytes")
+            print(f"   [OK] Downloaded {len(encrypted_file)} bytes")
             print(f"   IV: {iv_b64[:32]}...")
             print(f"   Auth Tag: {tag_b64[:32]}...\n")
             
-            print(f"→ Decrypting symmetric key with private key (RSA-OAEP)...")
+            print(f"[*] Decrypting symmetric key with private key (RSA-OAEP)...")
             try:
                 symmetric_key = crypto.rsa_decrypt(encrypted_key, self.private_key)
-                print(f"   ✓ Symmetric key decrypted ({len(symmetric_key)} bytes)\n")
+                print(f"   [OK] Symmetric key decrypted ({len(symmetric_key)} bytes)\n")
             except Exception as e:
-                print(f"   ✗ Failed to decrypt symmetric key: {e}")
+                print(f"   [FAIL] Failed to decrypt symmetric key: {e}")
                 print(f"   This file may not be intended for you.\n")
                 return False
             
-            print(f"→ Decrypting file with AES-256-GCM...")
+            print(f"[*] Decrypting file with AES-256-GCM...")
             try:
                 plaintext = crypto.aes_decrypt(encrypted_file, symmetric_key, iv, tag)
-                print(f"   ✓ File decrypted ({len(plaintext)} bytes)\n")
+                print(f"   [OK] File decrypted ({len(plaintext)} bytes)\n")
             except Exception as e:
-                print(f"   ✗ Decryption failed: {e}")
+                print(f"   [FAIL] Decryption failed: {e}")
                 print(f"   File may be corrupted.\n")
                 return False
             
-            print(f"→ Requesting sender's public key ({sender_id})...")
+            print(f"[*] Requesting sender's public key ({sender_id})...")
             response = self.send_request({
                 'action': 'get_receiver_pubkey',
                 'receiver_id': sender_id
             })
             
             if response.get('status') != 'success':
-                print(f"   ✗ Could not retrieve sender's public key: {response.get('message')}")
+                print(f"   [FAIL] Could not retrieve sender's public key: {response.get('message')}")
                 print(f"   Signature verification skipped.\n")
                 sender_pubkey = None
             else:
                 sender_pubkey = crypto.pem_to_public_key(response['public_key'])
-                print(f"   ✓ Retrieved {sender_id}'s public key\n")
+                print(f"   [OK] Retrieved {sender_id}'s public key\n")
             
             if sender_pubkey:
-                print(f"→ Verifying digital signature...")
+                print(f"[*] Verifying digital signature...")
                 is_valid = crypto.verify_signature(encrypted_file, signature, sender_pubkey)
                 
                 if is_valid:
-                    print(f"   ✓ Signature VERIFIED")
-                    print(f"   ✓ File is authentic from {sender_id}\n")
+                    print(f"   [OK] Signature VERIFIED")
+                    print(f"   [OK] File is authentic from {sender_id}\n")
                 else:
-                    print(f"   ✗ Signature INVALID")
-                    print(f"   ⚠️  WARNING: File may have been tampered with!\n")
+                    print(f"   [FAIL] Signature INVALID")
+                    print(f"   WARNING: File may have been tampered with!\n")
                     return False
             
-            print(f"→ Saving decrypted file...")
+            print(f"[*] Saving decrypted file...")
             output_path = self.received_dir / filename
             
             if output_path.exists():
@@ -182,22 +183,22 @@ class FileReceiver:
             with open(output_path, 'wb') as f:
                 f.write(plaintext)
             
-            print(f"   ✓ Saved to: {output_path}\n")
+            print(f"   [OK] Saved to: {output_path}\n")
             
             print(f"{'='*70}")
-            print(f"✓ FILE DECRYPTION SUCCESSFUL")
+            print(f"[OK] FILE DECRYPTION SUCCESSFUL")
             print(f"{'='*70}")
             print(f"  File ID: {file_id}")
             print(f"  From: {sender_id}")
             print(f"  Original name: {filename}")
             print(f"  Saved to: {output_path}")
             print(f"  Size: {len(plaintext)} bytes")
-            print(f"  Signature: VERIFIED ✓\n")
+            print(f"  Signature: VERIFIED\n")
             
             return True
         
         except Exception as e:
-            print(f"✗ Unexpected error: {e}\n")
+            print(f"[FAIL] Unexpected error: {e}\n")
             return False
     
     def interactive_mode(self):
@@ -249,6 +250,7 @@ class FileReceiver:
                 print("  Invalid option\n")
 
 
+
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
@@ -283,8 +285,11 @@ def main():
         print(f"{'='*70}\n")
         
         receiver = FileReceiver(receiver_id, server_host, server_port)
-        receiver.interactive_mode()
 
+        if len(sys.argv) == 2:
+            receiver.interactive_mode()
+        else:
+            receiver.interactive_mode()
 
 if __name__ == '__main__':
     main()

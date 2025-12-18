@@ -8,11 +8,8 @@ from formatting import send_json, receive_json
 from crypto_utils import crypto
 import sys
 import os
-import io
 
 if sys.platform == 'win32':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 class FileDropServer:
@@ -393,5 +390,10 @@ class FileDropServer:
 
 
 if __name__ == '__main__':
-    server = FileDropServer('127.0.0.1', 5000)
-    server.start()
+    try:
+        server = FileDropServer('127.0.0.1', 5000)
+        server.start()
+    except Exception as e:
+        print(f"FATAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
