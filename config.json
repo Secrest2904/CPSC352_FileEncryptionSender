@@ -1,0 +1,33 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5000,
+    "debug": false,
+    "max_connections": 10,
+    "socket_timeout": 30
+  },
+  "client": {
+    "server_host": "127.0.0.1",
+    "server_port": 5000,
+    "socket_timeout": 30,
+    "keys_directory": "keys",
+    "received_files_directory": "received_files"
+  },
+  "crypto": {
+    "rsa_key_size": 2048,
+    "aes_key_size": 256,
+    "hash_algorithm": "SHA256",
+    "rsa_padding": "OAEP",
+    "signature_padding": "PSS"
+  },
+  "storage": {
+    "server_storage_dir": "server_storage",
+    "database_file": "files.db",
+    "keys_dir": "server_keys"
+  },
+  "security": {
+    "require_signature_verification": true,
+    "max_filename_length": 255,
+    "max_file_size_mb": 5000
+  }
+}
