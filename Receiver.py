@@ -152,7 +152,7 @@ class FileReceiver:
             
             if sender_pubkey:
                 print(f"→ Verifying digital signature...")
-                is_valid = crypto.verify_signature(plaintext, signature, sender_pubkey)
+                is_valid = crypto.verify_signature(encrypted_file, signature, sender_pubkey)
                 
                 if is_valid:
                     print(f"   ✓ Signature VERIFIED")
