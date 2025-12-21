@@ -102,7 +102,7 @@ CPSC352_FileEncryptionSender/
 | Adam Secrest | Coding |
 | Zachary Headley | Documentation |
 | Javier Guzman | Video |
-| Zachary Headley | Documentation |
+| George Hanna | Documentation |
 
 ## Troubleshooting
 
