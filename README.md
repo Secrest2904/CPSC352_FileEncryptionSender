@@ -94,6 +94,16 @@ CPSC352_FileEncryptionSender/
 - **Networking**: Python sockets
 - **Serialization**: JSON
 
+## Contribution
+
+| Name | Role |
+|-------|----------|
+| Travis Nguyen | Coding |
+| Adam Secrest | Coding |
+| Zachary Headley | Documentation |
+| Javier Guzman | Video |
+| Zachary Headley | Documentation |
+
 ## Troubleshooting
 
 | Issue | Solution |
